@@ -8,5 +8,3 @@ def predict_emotion(text):
     # Make prediction
     prediction = pipe_lr.predict([text])[0]
     return prediction
-
-print(predict_emotion("I am feeling sad today!"))

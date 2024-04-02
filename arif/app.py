@@ -3,6 +3,20 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os, requests, base64
 from io import BytesIO
+from langchain_community.vectorstores import FAISS
+from operator import itemgetter
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain.prompts.prompt import PromptTemplate
+from langchain_core.messages import get_buffer_string
+from langchain_core.prompts import format_document
+from langchain_core.runnables import RunnableParallel
+import joblib
+import warnings
+#can remove if u want its just to remove warning
+warnings.filterwarnings("ignore", message="Trying to unpickle estimator .* from version .* when using version .*")
 
 app = FastAPI()
 
@@ -40,6 +54,74 @@ languages = {
     "Oriya": "or", #Oriya
     "English": "en",#English
 }
+
+############################RAG##############################
+
+OPENAI_API_KEY = "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"
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+new_db = FAISS.load_local("C:\\Users\\Anand\\Desktop\\Bhashini\\Bhashini-PS-2\\arif\\faiss_index", embeddings, allow_dangerous_deserialization=True)
+
+retriever = new_db.as_retriever()
+
+chat_history=[]
+
+async def gpt_response(query,emotion):
+    global chat_history
+    chat_history_string = "\n".join([f"User: {entry['query']}\nBot: {entry['response']}" for entry in chat_history])
+    _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
+
+    Chat History:
+    {chat_history}
+    Follow Up Input: {question}
+    Standalone question:"""
+    CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
+    template = """Answer the question based only on the following context:
+    {context}
+
+    Question: {question}
+    """
+    ANSWER_PROMPT = ChatPromptTemplate.from_template(template)
+    DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
+
+    def _combine_documents(
+        docs, document_prompt=DEFAULT_DOCUMENT_PROMPT, document_separator="\n\n"
+    ):
+        doc_strings = [format_document(doc, document_prompt) for doc in docs]
+        return document_separator.join(doc_strings)
+
+    _inputs = RunnableParallel(
+        standalone_question=RunnablePassthrough.assign(
+            chat_history=lambda x: get_buffer_string(x["chat_history"])
+        )
+        | CONDENSE_QUESTION_PROMPT
+        | ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+        | StrOutputParser(),
+    )
+    _context = {
+        "context": itemgetter("standalone_question") | retriever | _combine_documents,
+        "question": lambda x: x["standalone_question"],
+    }
+    conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(openai_api_key=OPENAI_API_KEY)
+    answer = conversational_qa_chain.invoke(
+        {
+            "question": query,
+            "emotion": emotion,            
+            "chat_history": chat_history_string
+        }
+    )
+    new_entry = {"query":query, "response": answer.content}
+    chat_history.append(new_entry)
+    return answer.content
+
+
+
+##########################EMOTION DETECTION#########################
+
+def predict_emotion(text):
+    pipe_lr = joblib.load(open("./emotion_classifier_pipe_lr.pkl", "rb"))
+    # Make prediction
+    prediction = pipe_lr.predict([text])[0]
+    return prediction
 
 
 ##############################Translate##############################
@@ -132,10 +214,16 @@ async def translation(source_lang, target_lang, content):
 @app.post("/gettext")
 async def gettext(text: str = Form(...), language: str = Form(...)):
     try:
-        translate_response = translation(language, "English", text)
+        translate_response = await translation(language, "English", text)
+        print(translate_response)
         english_text = translate_response["translated_content"]
-        #RAG content
-        result_text = translation("English", language, english_text)
+        print(english_text)
+        detected_emotion = predict_emotion(english_text)
+        print(detected_emotion)
+        gpt_result = await gpt_response(english_text,detected_emotion)
+        print(gpt_result)
+        result_text = await translation("English", language,gpt_result)
+        print(result_text)
         result = result_text["translated_content"]
         return JSONResponse(content={"text": result, "success": True}, status_code=200)
     except Exception as e:
@@ -323,8 +411,9 @@ async def getaudio(language: str = Form(...), audio: UploadFile = File(...)):
             text = source_text["transcribed_content"]
             translate_response = await translation(language,"English",text)
             english_text = translate_response["translated_content"]
-            #RAG Code
-            result_text = await translation("English", language,english_text)
+            detected_emotion = predict_emotion(english_text)
+            gpt_result = await gpt_response(english_text,detected_emotion)
+            result_text = await translation("English", language,gpt_result)
             result = result_text["translated_content"]
             speech = await text_to_speech(language,result)
             if speech["status_code"] == 200:
