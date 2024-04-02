@@ -15,6 +15,13 @@ from langchain_core.prompts import format_document
 from langchain_core.runnables import RunnableParallel
 import joblib
 import warnings
+from langchain.schema import (
+    SystemMessage,
+    HumanMessage,
+    AIMessage
+)
+
+
 #can remove if u want its just to remove warning
 warnings.filterwarnings("ignore", message="Trying to unpickle estimator .* from version .* when using version .*")
 
@@ -63,56 +70,47 @@ new_db = FAISS.load_local("C:\\Users\\Anand\\Desktop\\Bhashini\\Bhashini-PS-2\\a
 
 retriever = new_db.as_retriever()
 
-chat_history=[]
+chat = ChatOpenAI(
+    openai_api_key=OPENAI_API_KEY
+)
+
+message = [
+    SystemMessage(content="""You are a customer-service chatbot. You have to answer the responses based on the contexts that will be provided to you.'"""),
+    HumanMessage(content="Hi Multilingo, how are you today?"),
+    AIMessage(content="I'm great thank you. How can I help you?")
+]
+
+
+async def augment_prompt(query,emotion):
+    if len(message)>2:
+        results = retriever.invoke(str(message[-2])+'\n'+query)
+    else:
+        results = retriever.invoke(query)
+    source_knowledge = "\n".join([x.page_content for x in results])
+
+    augemented_prompt = f"""Using the contexts below, answer the query. Also you are provided with previous conversations of the 
+    system with the user. Refer to this conversation along with the emotion of user and understand what the user is asking for making you a conversational bot.
+
+    Context:
+    {source_knowledge}
+
+    Emotion: {emotion}
+    
+    Query:
+    {query}"""
+    return augemented_prompt
+
+
 
 async def gpt_response(query,emotion):
-    global chat_history
-    chat_history_string = "\n".join([f"User: {entry['query']}\nBot: {entry['response']}" for entry in chat_history])
-    _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
-
-    Chat History:
-    {chat_history}
-    Follow Up Input: {question}
-    Standalone question:"""
-    CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
-    template = """Answer the question based only on the following context:
-    {context}
-
-    Question: {question}
-    """
-    ANSWER_PROMPT = ChatPromptTemplate.from_template(template)
-    DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
-
-    def _combine_documents(
-        docs, document_prompt=DEFAULT_DOCUMENT_PROMPT, document_separator="\n\n"
-    ):
-        doc_strings = [format_document(doc, document_prompt) for doc in docs]
-        return document_separator.join(doc_strings)
-
-    _inputs = RunnableParallel(
-        standalone_question=RunnablePassthrough.assign(
-            chat_history=lambda x: get_buffer_string(x["chat_history"])
-        )
-        | CONDENSE_QUESTION_PROMPT
-        | ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-        | StrOutputParser(),
+    prompt = HumanMessage(
+        content= await augment_prompt(query, emotion)
     )
-    _context = {
-        "context": itemgetter("standalone_question") | retriever | _combine_documents,
-        "question": lambda x: x["standalone_question"],
-    }
-    conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(openai_api_key=OPENAI_API_KEY)
-    answer = conversational_qa_chain.invoke(
-        {
-            "question": query,
-            "emotion": emotion,            
-            "chat_history": chat_history_string
-        }
-    )
-    new_entry = {"query":query, "response": answer.content}
-    chat_history.append(new_entry)
-    return answer.content
-
+    message.append(prompt)
+    res = chat.invoke(message[-4:])
+    print(res)
+    message.append(res)
+    return res.content
 
 
 ##########################EMOTION DETECTION#########################
@@ -409,9 +407,12 @@ async def getaudio(language: str = Form(...), audio: UploadFile = File(...)):
             base64_encoded_data = base64.b64encode(mp3_data).decode('utf-8')
             source_text = await transcribe(language,base64_encoded_data)
             text = source_text["transcribed_content"]
+            print(text)
             translate_response = await translation(language,"English",text)
             english_text = translate_response["translated_content"]
+            print(english_text)
             detected_emotion = predict_emotion(english_text)
+            print(detected_emotion)
             gpt_result = await gpt_response(english_text,detected_emotion)
             result_text = await translation("English", language,gpt_result)
             result = result_text["translated_content"]
