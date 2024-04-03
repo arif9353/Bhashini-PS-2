@@ -2,30 +2,26 @@ from fastapi import FastAPI,File,UploadFile,Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os, requests, base64
-from io import BytesIO
 from langchain_community.vectorstores import FAISS
-from operator import itemgetter
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings, OpenAI
 from langchain.prompts.prompt import PromptTemplate
-from langchain_core.messages import get_buffer_string
-from langchain_core.prompts import format_document
-from langchain_core.runnables import RunnableParallel
 from langchain.chains import LLMChain
 from tempfile import NamedTemporaryFile
-import joblib
-import warnings
+
+from dotenv import load_dotenv
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+BHASHINI_USER_ID = os.getenv("BHASHINI_USER_ID")
+BHASHINI_API_KEY = os.getenv("BHASHINI_API_KEY")
+
 from langchain.schema import (
     SystemMessage,
     HumanMessage,
     AIMessage
 )
 
-
-#can remove if u want its just to remove warning
-warnings.filterwarnings("ignore", message="Trying to unpickle estimator .* from version .* when using version .*")
 
 app = FastAPI()
 
@@ -66,9 +62,12 @@ languages = {
 
 ############################RAG##############################
 
-OPENAI_API_KEY = "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"
+
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-new_db = FAISS.load_local("C:\\Users\\Anand\\Desktop\\Bhashini\\Bhashini-PS-2\\arif\\faiss_index", embeddings, allow_dangerous_deserialization=True)
+cwd = os.getcwd()
+file_name = "faiss_index"
+file_path = os.path.join(cwd, file_name)
+new_db = FAISS.load_local(file_path, embeddings, allow_dangerous_deserialization=True)
 
 retriever = new_db.as_retriever()
 
@@ -125,7 +124,7 @@ def predict_emotion(text):
     llm = OpenAI(openai_api_key=OPENAI_API_KEY)
     llm_chain = LLMChain(prompt=prompt, llm=llm)
     answer = llm_chain.invoke(text)
-    return answer
+    return answer["text"]
 
 
 ##############################Translate##############################
@@ -152,8 +151,8 @@ async def translation(source_lang, target_lang, content):
     }
     headers = {
         "Content-Type": "application/json",
-        "userID": "e832f2d25d21443e8bb90515f1079041",
-        "ulcaApiKey": "39e27ce432-f79c-46f8-9c8c-c0856007cb4b"
+        "userID": BHASHINI_USER_ID,
+        "ulcaApiKey": BHASHINI_API_KEY
     }
     response = requests.post('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', json=payload, headers=headers)
     if response.status_code == 200:
@@ -256,8 +255,8 @@ async def transcribe(source_lang, content):
     }
     headers = {
         "Content-Type": "application/json",
-        "userID": "4b1666d332054624a5a171d109d0cf3d",
-        "ulcaApiKey": "36a0e06739-84b7-4359-88ec-6712c7979674"
+        "userID": BHASHINI_USER_ID,
+        "ulcaApiKey": BHASHINI_API_KEY
     }
     response = requests.post('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', json=payload, headers=headers)
     
@@ -337,8 +336,8 @@ async def text_to_speech(source_lang,content):
 
     headers = {
         "Content-Type": "application/json",
-        "userID": "e832f2d25d21443e8bb90515f1079041",
-        "ulcaApiKey": "39e27ce432-f79c-46f8-9c8c-c0856007cb4b"
+        "userID": BHASHINI_USER_ID,
+        "ulcaApiKey": BHASHINI_API_KEY
     }
 
     response = requests.post('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', json=payload, headers=headers)
