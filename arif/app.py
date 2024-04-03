@@ -8,7 +8,6 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings, OpenAI
 from langchain.prompts.prompt import PromptTemplate
 from langchain.chains import LLMChain
 from tempfile import NamedTemporaryFile
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -117,7 +116,7 @@ async def gpt_response(query,emotion):
 
 ##########################EMOTION DETECTION#########################
 
-def predict_emotion(text):
+async def predict_emotion(text):
     template = """The emotions are: [happy, neutral, unhappy]. Detect Emotion for the sentence below in just one word.\n
     Sentence: {text}"""
     prompt = PromptTemplate.from_template(template)
@@ -221,7 +220,7 @@ async def gettext(text: str = Form(...), language: str = Form(...)):
         print(translate_response)
         english_text = translate_response["translated_content"]
         print(english_text)
-        detected_emotion = predict_emotion(english_text)
+        detected_emotion = await predict_emotion(english_text)
         print(detected_emotion)
         gpt_result = await gpt_response(english_text,detected_emotion)
         print(gpt_result)
@@ -416,7 +415,7 @@ async def getaudio(language: str = Form(...), audio: UploadFile = File(...)):
             translate_response = await translation(language,"English",text)
             english_text = translate_response["translated_content"]
             print(english_text)
-            detected_emotion = predict_emotion(english_text)
+            detected_emotion = await predict_emotion(english_text)
             print(detected_emotion)
             gpt_result = await gpt_response(english_text,detected_emotion)
             print(gpt_result)
