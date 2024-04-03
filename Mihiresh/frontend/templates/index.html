@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+    <title>Document</title>
+    <style>
+        .container{
+            display: flex;
+            flex-direction: column;
+        }
+        .panel{
+            height:50vh;
+            background-image: url("../assets/bg_bot.jpg");
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position-y: center;
+            display: flex;
+            flex-direction: column;
+        }
+        select{
+            background: none;
+            border: 0px;
+            color: white;
+            font-size: 18px;
+            font-weight: lighter;
+            margin: 12px;
+        }
+        select:focus{
+            outline: none; /* Remove default focus outline */
+            border-color: transparent;
+        }
+        .header{
+            background: linear-gradient(92deg, #FFF -3.39%, #D3EBFE 96.9%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: Inter;
+            font-size: 64px;
+            font-style: normal;
+            font-weight: 1000;
+            line-height: normal;
+            margin-left: 5vw;
+        }
+        .butt{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .sub-text{
+            color: #042455;
+            text-align: center;
+            font-family: Inter;
+            font-size: 20px;
+            font-style: normal;
+            font-weight: 900;
+        }
+        .user-type{
+            display: flex;
+            flex-direction: row;
+
+        }
+        .seller-img{
+            width: 22vw;
+            height: 30vh;
+            background-image: url("../assets/seller.png");
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position-x: center;
+            background-position-y: top;
+            border-radius: 8px;
+        }
+        .seller{
+            border-radius: 8px;
+            background: linear-gradient(75deg, #34373C 5.4%, #4E5F73 98.12%);
+            height: 44vh;
+            width: 22vw; 
+            margin-top: 2vw;
+            margin-left: 2vw;
+            margin-right: 2vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .seller p{
+            color: #FFF;
+            text-decoration: none;
+            text-shadow: 0px 0px 12px rgba(0, 0, 0, 0.60);
+            font-family: Inter;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        .buyer-img{
+            width: 22vw;
+            height: 30vh;
+            background-image: url("../assets/buyer.png");
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position-x: center;
+            background-position-y: top;
+            border-radius: 8px;
+        }
+        .buyer{
+            border-radius: 8px;
+            background: linear-gradient(75deg, #34373C 5.4%, #4E5F73 98.12%);
+            height: 44vh;
+            width: 22vw; 
+            margin-top: 2vw;
+            margin-left: 2vw;
+            margin-right: 2vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .buyer p{
+            color: #FFF;
+            text-decoration: none;
+            text-shadow: 0px 0px 12px rgba(0, 0, 0, 0.60);
+            font-family: Inter;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        a{
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="lang">
+                <select name="language" id="language">
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Gom">Gom</option>
+                    <option value="Kannada">Kannada</option>
+                    <option value="Dogri">Dogri</option>
+                    <option value="Bodo">Bodo</option>
+                    <option value="Urdu">Urdu</option>
+                    <option value="Tamil">Tamil</option>
+                    <option value="Kashmiri">Kashmiri</option>
+                    <option value="Assamese">Assamese</option>
+                    <option value="Bengali">Bengali</option>
+                    <option value="Marathi">Marathi</option>
+                    <option value="Sindhi">Sindhi</option>
+                    <option value="Maithili">Maithili</option>
+                    <option value="Punjabi">Punjabi</option>
+                    <option value="Malayalam">Malayalam</option>
+                    <option value="Manipuri">Manipuri</option>
+                    <option value="Telugu">Telugu</option>
+                    <option value="Sanskrit">Sanskrit</option>
+                    <option value="Nepali">Nepali</option>
+                    <option value="Santali">Santali</option>
+                    <option value="Gujarati">Gujarati</option>
+                    <option value="Oriya">Oriya</option>
+                </select>   
+            </div>
+            <div class="header">
+                <p>Customer Service<br>ChatBot</p>
+            </div>
+        </div>
+        <div class="butt">
+            <div class="sub-header">
+                <p class="sub-text">What’s your role?</p>
+            </div>
+            <div class="line">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1264" height="2" viewBox="0 0 1264 2" fill="none">
+                    <path d="M1 1H1263" stroke="url(#paint0_radial_47_8)" stroke-linecap="round"/>
+                    <defs>
+                        <radialGradient id="paint0_radial_47_8" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(632.001 1.5) scale(631.001 0.5)">
+                            <stop stop-color="#4E7798"/>
+                            <stop offset="1" stop-color="#CDDAE5"/>
+                        </radialGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class=user-type>
+                <a href="chat_seller.html">
+                    <div class="seller">
+                        <div class="seller-img"></div>
+                        <p>Seller</p>
+                    </div>
+                </a>
+                <a href="chat-buyer.html">
+                    <div class="buyer">
+                        <div class="buyer-img"></div>
+                        <p>Buyer</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
