@@ -1,18 +1,20 @@
 from fastapi import FastAPI,File,UploadFile,Form
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os, requests, base64
 from io import BytesIO
 from langchain_community.vectorstores import FAISS
 from operator import itemgetter
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings, OpenAI
 from langchain.prompts.prompt import PromptTemplate
 from langchain_core.messages import get_buffer_string
 from langchain_core.prompts import format_document
 from langchain_core.runnables import RunnableParallel
+from langchain.chains import LLMChain
+from tempfile import NamedTemporaryFile
 import joblib
 import warnings
 from langchain.schema import (
@@ -74,6 +76,8 @@ chat = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY
 )
 
+client = OpenAI(openai_api_key=OPENAI_API_KEY)
+
 message = [
     SystemMessage(content="""You are a customer-service chatbot. You have to answer the responses based on the contexts that will be provided to you.'"""),
     HumanMessage(content="Hi Multilingo, how are you today?"),
@@ -108,7 +112,6 @@ async def gpt_response(query,emotion):
     )
     message.append(prompt)
     res = chat.invoke(message[-4:])
-    print(res)
     message.append(res)
     return res.content
 
@@ -116,10 +119,13 @@ async def gpt_response(query,emotion):
 ##########################EMOTION DETECTION#########################
 
 def predict_emotion(text):
-    pipe_lr = joblib.load(open("./emotion_classifier_pipe_lr.pkl", "rb"))
-    # Make prediction
-    prediction = pipe_lr.predict([text])[0]
-    return prediction
+    template = """The emotions are: [happy, neutral, unhappy]. Detect Emotion for the sentence below in just one word.\n
+    Sentence: {text}"""
+    prompt = PromptTemplate.from_template(template)
+    llm = OpenAI(openai_api_key=OPENAI_API_KEY)
+    llm_chain = LLMChain(prompt=prompt, llm=llm)
+    answer = llm_chain.invoke(text)
+    return answer
 
 
 ##############################Translate##############################
@@ -414,15 +420,21 @@ async def getaudio(language: str = Form(...), audio: UploadFile = File(...)):
             detected_emotion = predict_emotion(english_text)
             print(detected_emotion)
             gpt_result = await gpt_response(english_text,detected_emotion)
+            print(gpt_result)
             result_text = await translation("English", language,gpt_result)
             result = result_text["translated_content"]
+            print(result)
             speech = await text_to_speech(language,result)
             if speech["status_code"] == 200:
                 tts_b64 = speech["tts_base64"]
                 audio_bytes = base64.b64decode(tts_b64)
-                audio_io = BytesIO(audio_bytes)
-                audio_io.seek(0)
-                return StreamingResponse(audio_io, media_type="audio/mpeg")
+                with NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                    tmp.write(audio_bytes)
+                    tmp_path = tmp.name
+
+            # Return the path to the temporary file as a FileResponse
+            # Set media_type explicitly if needed, though it should be inferred from the file extension
+                return FileResponse(path=tmp_path, filename="output.mp3", media_type="audio/mpeg")
             else:
                 return JSONResponse(content={"text": "Error generating speech", "success": False}, status_code=speech["status_code"])
     except Exception as e:
