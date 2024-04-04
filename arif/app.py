@@ -9,6 +9,8 @@ from langchain.prompts.prompt import PromptTemplate
 from langchain.chains import LLMChain
 from tempfile import NamedTemporaryFile
 from dotenv import load_dotenv
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import CharacterTextSplitter
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -64,9 +66,12 @@ languages = {
 
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 cwd = os.getcwd()
-file_name = "faiss_index"
-file_path = os.path.join(cwd, file_name)
-new_db = FAISS.load_local(file_path, embeddings, allow_dangerous_deserialization=True)
+faiss_file_name = "faiss_index"
+faiss_file_path = os.path.join(cwd, faiss_file_name)
+new_db = FAISS.load_local(faiss_file_path, embeddings, allow_dangerous_deserialization=True)
+
+data_folder_name = "data"
+data_folder_path = os.path.join(cwd, data_folder_name)
 
 retriever = new_db.as_retriever()
 
@@ -127,6 +132,25 @@ async def predict_emotion(text):
 
 
 ##############################Translate##############################
+
+
+@app.post("/faiss")
+async def create_faiss(data: UploadFile = File(...)):
+    file_path = os.path.join(data_folder_path,"data.pdf")
+    with open(file_path,"wb") as buffer:
+        content = await data.read()
+        buffer.write(content)
+    await data.seek(0)
+    loader = PyPDFLoader(file_path)
+    pages = loader.load_and_split()
+    text_splitter = CharacterTextSplitter(chunk_size=500,chunk_overlap = 0)
+    docs = text_splitter.split_documents(pages)
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    db = FAISS.from_documents(docs, embeddings)
+    db.save_local("faiss_index")
+    new_db = FAISS.load_local(faiss_file_path, embeddings, allow_dangerous_deserialization=True)
+    retriever = new_db.as_retriever()
+    return {"success": True, "message":"Faiss created successfully"}
 
 
 async def translation(source_lang, target_lang, content):

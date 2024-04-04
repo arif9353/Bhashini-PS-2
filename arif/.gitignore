@@ -1,5 +1,5 @@
 myenv
 __pycache__
 .env
-data
+data/data.pdf
 dummyfrontend
